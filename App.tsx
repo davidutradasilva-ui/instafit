@@ -7,6 +7,7 @@ import EmailVerificationScreen from './src/screens/EmailVerificationScreen';
 import CreatePasswordScreen from './src/screens/CreatePasswordScreen';
 import { sendEmailOtp, setUserPassword, verifyEmailOtp } from './src/services/auth';
 import { isSupabaseConfigured, supabase } from './src/lib/supabase';
+import { getAuthErrorMessage } from './src/utils/authError';
 
 type Screen = 'login' | 'verification' | 'password' | 'done';
 type MessageType = 'error' | 'success' | 'info';
@@ -66,7 +67,7 @@ export default function App() {
     try {
       const { error } = await sendEmailOtp(trimmedEmail);
       if (error) {
-        showMessage(`Erro ao enviar código: ${error.message}`);
+        showMessage(`Erro ao enviar código: ${getAuthErrorMessage(error, 'Não foi possível enviar o e-mail.')}`);
         return;
       }
 
@@ -92,7 +93,7 @@ export default function App() {
     try {
       const { error } = await verifyEmailOtp(email, code);
       if (error) {
-        showMessage(`Código inválido: ${error.message}`);
+        showMessage(`Código inválido: ${getAuthErrorMessage(error, 'Código incorreto ou expirado.')}`);
         return;
       }
 
@@ -112,7 +113,7 @@ export default function App() {
     try {
       const { error } = await sendEmailOtp(email);
       if (error) {
-        showMessage(`Erro ao reenviar: ${error.message}`);
+        showMessage(`Erro ao reenviar: ${getAuthErrorMessage(error, 'Não foi possível reenviar o código.')}`);
         return;
       }
 
@@ -136,7 +137,7 @@ export default function App() {
     try {
       const { error } = await setUserPassword(password);
       if (error) {
-        showMessage(`Erro ao criar senha: ${error.message}`);
+        showMessage(`Erro ao criar senha: ${getAuthErrorMessage(error, 'Não foi possível salvar a senha.')}`);
         return;
       }
 
