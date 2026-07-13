@@ -5,7 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import EmailLoginScreen from './src/screens/EmailLoginScreen';
 import EmailVerificationScreen from './src/screens/EmailVerificationScreen';
 import CreatePasswordScreen from './src/screens/CreatePasswordScreen';
-import { sendEmailOtp, setUserPassword, verifyEmailOtp } from './src/services/auth';
+import { sendEmailConfirmation, setUserPassword } from './src/services/auth';
 import { isSupabaseConfigured, supabase } from './src/lib/supabase';
 import { getAuthErrorMessage } from './src/utils/authError';
 
@@ -42,13 +42,24 @@ export default function App() {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        setScreen('done');
+        setScreen('password');
       }
       setCheckingSession(false);
     });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setScreen('password');
+        setMessage('');
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const handleSendOtp = async () => {
+  const handleSendConfirmation = async () => {
     const trimmedEmail = email.trim().toLowerCase();
 
     if (!isSupabaseConfigured) {
@@ -65,61 +76,63 @@ export default function App() {
     setLoading(true);
 
     try {
-      const { error } = await sendEmailOtp(trimmedEmail);
+      const { error } = await sendEmailConfirmation(trimmedEmail);
       if (error) {
-        showMessage(`Erro ao enviar código: ${getAuthErrorMessage(error, 'Não foi possível enviar o e-mail.')}`);
+        showMessage(
+          `Erro ao enviar e-mail: ${getAuthErrorMessage(error, 'Não foi possível enviar o e-mail.')}`
+        );
         return;
       }
 
       setEmail(trimmedEmail);
       setScreen('verification');
-      showMessage('Código enviado! Confira seu e-mail.', 'success');
+      showMessage('E-mail enviado! Confira sua caixa de entrada.', 'success');
     } catch {
-      showMessage('Não foi possível enviar o código. Tente novamente.');
+      showMessage('Não foi possível enviar o e-mail. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerifyOtp = async (code: string) => {
-    if (code.length !== 6) {
-      showMessage('Digite os 6 dígitos enviados para seu e-mail.');
-      return;
-    }
-
+  const handleCheckConfirmation = async () => {
     setMessage('');
     setLoading(true);
 
     try {
-      const { error } = await verifyEmailOtp(email, code);
-      if (error) {
-        showMessage(`Código inválido: ${getAuthErrorMessage(error, 'Código incorreto ou expirado.')}`);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        showMessage('Confirme seu e-mail clicando no link que enviamos antes de continuar.');
         return;
       }
 
       setScreen('password');
       showMessage('E-mail confirmado! Agora crie sua senha.', 'success');
     } catch {
-      showMessage('Não foi possível confirmar o código. Tente novamente.');
+      showMessage('Não foi possível verificar a confirmação. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResendOtp = async () => {
+  const handleResendConfirmation = async () => {
     setMessage('');
     setLoading(true);
 
     try {
-      const { error } = await sendEmailOtp(email);
+      const { error } = await sendEmailConfirmation(email);
       if (error) {
-        showMessage(`Erro ao reenviar: ${getAuthErrorMessage(error, 'Não foi possível reenviar o código.')}`);
+        showMessage(
+          `Erro ao reenviar: ${getAuthErrorMessage(error, 'Não foi possível reenviar o e-mail.')}`
+        );
         return;
       }
 
-      showMessage('Novo código enviado para seu e-mail.', 'success');
+      showMessage('E-mail de confirmação reenviado.', 'success');
     } catch {
-      showMessage('Não foi possível reenviar o código.');
+      showMessage('Não foi possível reenviar o e-mail.');
     } finally {
       setLoading(false);
     }
@@ -167,7 +180,7 @@ export default function App() {
         <EmailLoginScreen
           email={email}
           onEmailChange={setEmail}
-          onContinue={handleSendOtp}
+          onContinue={handleSendConfirmation}
           loading={loading}
           message={message}
           messageType={messageType}
@@ -180,8 +193,8 @@ export default function App() {
             setScreen('login');
             setMessage('');
           }}
-          onContinue={handleVerifyOtp}
-          onResend={handleResendOtp}
+          onContinue={handleCheckConfirmation}
+          onResend={handleResendConfirmation}
           loading={loading}
           message={message}
           messageType={messageType}

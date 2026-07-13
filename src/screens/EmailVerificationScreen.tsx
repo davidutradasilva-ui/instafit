@@ -1,11 +1,9 @@
-import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -16,14 +14,12 @@ import AuthMessage from '../components/AuthMessage';
 type EmailVerificationScreenProps = {
   email: string;
   onBack: () => void;
-  onContinue: (code: string) => void;
+  onContinue: () => void;
   onResend: () => void;
   loading?: boolean;
   message?: string;
   messageType?: 'error' | 'success' | 'info';
 };
-
-const CODE_LENGTH = 6;
 
 export default function EmailVerificationScreen({
   email,
@@ -34,27 +30,6 @@ export default function EmailVerificationScreen({
   message = '',
   messageType = 'error',
 }: EmailVerificationScreenProps) {
-  const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
-  const inputRefs = useRef<Array<TextInput | null>>([]);
-
-  const handleChange = (value: string, index: number) => {
-    const digit = value.replace(/\D/g, '').slice(-1);
-
-    const nextCode = [...code];
-    nextCode[index] = digit;
-    setCode(nextCode);
-
-    if (digit && index < CODE_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyPress = (key: string, index: number) => {
-    if (key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -68,32 +43,16 @@ export default function EmailVerificationScreen({
         <View style={styles.contentSection}>
           <Text style={styles.title}>Verifique seu email</Text>
           <Text style={styles.subtitle}>
-            Enviamos um código de 6 dígitos para{'\n'}
+            Enviamos um link de confirmação para{'\n'}
             {email || 'seu@email.com'}
           </Text>
+          <Text style={styles.instructions}>
+            Abra seu e-mail e clique no link para confirmar sua conta. Depois volte aqui e toque em
+            Continuar.
+          </Text>
 
-          <View style={styles.codeRow}>
-            {code.map((digit, index) => (
-              <TextInput
-                key={index}
-                ref={(ref) => {
-                  inputRefs.current[index] = ref;
-                }}
-                style={styles.codeInput}
-                value={digit}
-                onChangeText={(value) => handleChange(value, index)}
-                onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
-                keyboardType="number-pad"
-                maxLength={1}
-                textAlign="center"
-                selectTextOnFocus
-                underlineColorAndroid="transparent"
-              />
-            ))}
-          </View>
-
-          <TouchableOpacity accessibilityLabel="Reenviar código" onPress={onResend} disabled={loading}>
-            <Text style={styles.resendText}>Reenviar Código</Text>
+          <TouchableOpacity accessibilityLabel="Reenviar e-mail" onPress={onResend} disabled={loading}>
+            <Text style={styles.resendText}>Reenviar e-mail</Text>
           </TouchableOpacity>
 
           <AuthMessage message={message} type={messageType} />
@@ -108,7 +67,7 @@ export default function EmailVerificationScreen({
           <TouchableOpacity
             style={[styles.continueButton, loading && styles.continueButtonDisabled]}
             accessibilityLabel="Continuar"
-            onPress={() => onContinue(code.join(''))}
+            onPress={onContinue}
             disabled={loading}
           >
             {loading ? (
@@ -156,29 +115,18 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textAlign: 'center',
     maxWidth: 300,
+    marginBottom: 20,
+  },
+  instructions: {
+    color: '#888',
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
+    maxWidth: 300,
     marginBottom: 28,
   },
   spacer: {
     flex: 1,
-  },
-  codeRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 10,
-    marginBottom: 28,
-  },
-  codeInput: {
-    width: 44,
-    height: 52,
-    borderWidth: 1,
-    borderColor: '#555',
-    borderRadius: 8,
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '600',
-    backgroundColor: 'transparent',
-    outlineStyle: 'none',
-    outlineWidth: 0,
   },
   resendText: {
     color: '#fff',
