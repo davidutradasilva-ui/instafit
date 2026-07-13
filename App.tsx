@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import EmailLoginScreen from './src/screens/EmailLoginScreen';
 import EmailVerificationScreen from './src/screens/EmailVerificationScreen';
 import CreatePasswordScreen from './src/screens/CreatePasswordScreen';
 import { sendEmailOtp, setUserPassword, verifyEmailOtp } from './src/services/auth';
-import { supabase } from './src/lib/supabase';
+import { isSupabaseConfigured, supabase } from './src/lib/supabase';
 
 type Screen = 'login' | 'verification' | 'password' | 'done';
+type MessageType = 'error' | 'success' | 'info';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('login');
@@ -16,8 +17,28 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<MessageType>('error');
+
+  const showMessage = (text: string, type: MessageType = 'error') => {
+    setMessage(text);
+    setMessageType(type);
+
+    if (Platform.OS !== 'web') {
+      Alert.alert(type === 'error' ? 'Atenção' : 'Sucesso', text);
+    }
+  };
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setCheckingSession(false);
+      showMessage(
+        'Supabase não configurado na Vercel. Adicione EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.',
+        'error'
+      );
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setScreen('done');
@@ -29,71 +50,103 @@ export default function App() {
   const handleSendOtp = async () => {
     const trimmedEmail = email.trim().toLowerCase();
 
+    if (!isSupabaseConfigured) {
+      showMessage('Configure as variáveis do Supabase na Vercel antes de continuar.');
+      return;
+    }
+
     if (!trimmedEmail.includes('@')) {
-      Alert.alert('E-mail inválido', 'Digite um e-mail válido para continuar.');
+      showMessage('Digite um e-mail válido para continuar.');
       return;
     }
 
+    setMessage('');
     setLoading(true);
-    const { error } = await sendEmailOtp(trimmedEmail);
-    setLoading(false);
 
-    if (error) {
-      Alert.alert('Erro ao enviar código', error.message);
-      return;
+    try {
+      const { error } = await sendEmailOtp(trimmedEmail);
+      if (error) {
+        showMessage(`Erro ao enviar código: ${error.message}`);
+        return;
+      }
+
+      setEmail(trimmedEmail);
+      setScreen('verification');
+      showMessage('Código enviado! Confira seu e-mail.', 'success');
+    } catch {
+      showMessage('Não foi possível enviar o código. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
-
-    setEmail(trimmedEmail);
-    setScreen('verification');
   };
 
   const handleVerifyOtp = async (code: string) => {
     if (code.length !== 6) {
-      Alert.alert('Código incompleto', 'Digite os 6 dígitos enviados para seu e-mail.');
+      showMessage('Digite os 6 dígitos enviados para seu e-mail.');
       return;
     }
 
+    setMessage('');
     setLoading(true);
-    const { error } = await verifyEmailOtp(email, code);
-    setLoading(false);
 
-    if (error) {
-      Alert.alert('Código inválido', error.message);
-      return;
+    try {
+      const { error } = await verifyEmailOtp(email, code);
+      if (error) {
+        showMessage(`Código inválido: ${error.message}`);
+        return;
+      }
+
+      setScreen('password');
+      showMessage('E-mail confirmado! Agora crie sua senha.', 'success');
+    } catch {
+      showMessage('Não foi possível confirmar o código. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
-
-    setScreen('password');
   };
 
   const handleResendOtp = async () => {
+    setMessage('');
     setLoading(true);
-    const { error } = await sendEmailOtp(email);
-    setLoading(false);
 
-    if (error) {
-      Alert.alert('Erro ao reenviar', error.message);
-      return;
+    try {
+      const { error } = await sendEmailOtp(email);
+      if (error) {
+        showMessage(`Erro ao reenviar: ${error.message}`);
+        return;
+      }
+
+      showMessage('Novo código enviado para seu e-mail.', 'success');
+    } catch {
+      showMessage('Não foi possível reenviar o código.');
+    } finally {
+      setLoading(false);
     }
-
-    Alert.alert('Código reenviado', 'Enviamos um novo código para seu e-mail.');
   };
 
   const handleSetPassword = async () => {
     if (password.length < 6) {
-      Alert.alert('Senha fraca', 'A senha deve ter pelo menos 6 caracteres.');
+      showMessage('A senha deve ter pelo menos 6 caracteres.');
       return;
     }
 
+    setMessage('');
     setLoading(true);
-    const { error } = await setUserPassword(password);
-    setLoading(false);
 
-    if (error) {
-      Alert.alert('Erro ao criar senha', error.message);
-      return;
+    try {
+      const { error } = await setUserPassword(password);
+      if (error) {
+        showMessage(`Erro ao criar senha: ${error.message}`);
+        return;
+      }
+
+      setScreen('done');
+      setMessage('');
+    } catch {
+      showMessage('Não foi possível criar a senha. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
-
-    setScreen('done');
   };
 
   if (checkingSession) {
@@ -115,24 +168,36 @@ export default function App() {
           onEmailChange={setEmail}
           onContinue={handleSendOtp}
           loading={loading}
+          message={message}
+          messageType={messageType}
         />
       )}
       {screen === 'verification' && (
         <EmailVerificationScreen
           email={email}
-          onBack={() => setScreen('login')}
+          onBack={() => {
+            setScreen('login');
+            setMessage('');
+          }}
           onContinue={handleVerifyOtp}
           onResend={handleResendOtp}
           loading={loading}
+          message={message}
+          messageType={messageType}
         />
       )}
       {screen === 'password' && (
         <CreatePasswordScreen
           password={password}
           onPasswordChange={setPassword}
-          onBack={() => setScreen('verification')}
+          onBack={() => {
+            setScreen('verification');
+            setMessage('');
+          }}
           onContinue={handleSetPassword}
           loading={loading}
+          message={message}
+          messageType={messageType}
         />
       )}
       {screen === 'done' && (

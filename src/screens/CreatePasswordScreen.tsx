@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AuthMessage from '../components/AuthMessage';
 
 type CreatePasswordScreenProps = {
   password: string;
@@ -17,6 +18,8 @@ type CreatePasswordScreenProps = {
   onBack: () => void;
   onContinue: () => void;
   loading?: boolean;
+  message?: string;
+  messageType?: 'error' | 'success' | 'info';
 };
 
 export default function CreatePasswordScreen({
@@ -25,6 +28,8 @@ export default function CreatePasswordScreen({
   onBack,
   onContinue,
   loading = false,
+  message = '',
+  messageType = 'error',
 }: CreatePasswordScreenProps) {
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -55,6 +60,8 @@ export default function CreatePasswordScreen({
             <Text style={styles.termsLink}>Termos de Serviço</Text> e{' '}
             <Text style={styles.termsLink}>Politica de Privacidade</Text>
           </Text>
+
+          <AuthMessage message={message} type={messageType} />
         </View>
 
         <View style={styles.spacer} />

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AuthMessage from '../components/AuthMessage';
 
 type EmailVerificationScreenProps = {
   email: string;
@@ -18,6 +19,8 @@ type EmailVerificationScreenProps = {
   onContinue: (code: string) => void;
   onResend: () => void;
   loading?: boolean;
+  message?: string;
+  messageType?: 'error' | 'success' | 'info';
 };
 
 const CODE_LENGTH = 6;
@@ -28,6 +31,8 @@ export default function EmailVerificationScreen({
   onContinue,
   onResend,
   loading = false,
+  message = '',
+  messageType = 'error',
 }: EmailVerificationScreenProps) {
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
   const inputRefs = useRef<Array<TextInput | null>>([]);
@@ -90,6 +95,8 @@ export default function EmailVerificationScreen({
           <TouchableOpacity accessibilityLabel="Reenviar código" onPress={onResend} disabled={loading}>
             <Text style={styles.resendText}>Reenviar Código</Text>
           </TouchableOpacity>
+
+          <AuthMessage message={message} type={messageType} />
         </View>
 
         <View style={styles.spacer} />

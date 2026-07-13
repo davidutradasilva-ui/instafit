@@ -10,12 +10,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AuthMessage from '../components/AuthMessage';
 
 type EmailLoginScreenProps = {
   email: string;
   onEmailChange: (email: string) => void;
   onContinue: () => void;
   loading?: boolean;
+  message?: string;
+  messageType?: 'error' | 'success' | 'info';
 };
 
 export default function EmailLoginScreen({
@@ -23,6 +26,8 @@ export default function EmailLoginScreen({
   onEmailChange,
   onContinue,
   loading = false,
+  message = '',
+  messageType = 'error',
 }: EmailLoginScreenProps) {
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -47,6 +52,7 @@ export default function EmailLoginScreen({
             autoCorrect={false}
             underlineColorAndroid="transparent"
           />
+          <AuthMessage message={message} type={messageType} />
         </View>
 
         <View style={styles.socialSection}>
