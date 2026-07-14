@@ -5,11 +5,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import EmailLoginScreen from './src/screens/EmailLoginScreen';
 import EmailVerificationScreen from './src/screens/EmailVerificationScreen';
 import CreatePasswordScreen from './src/screens/CreatePasswordScreen';
+import AccountCreatedScreen from './src/screens/AccountCreatedScreen';
+import OnboardingChatScreen from './src/screens/OnboardingChatScreen';
 import { sendEmailConfirmation, setUserPassword } from './src/services/auth';
+import { hasProfile } from './src/services/profile';
 import { isSupabaseConfigured, supabase } from './src/lib/supabase';
 import { getAuthErrorMessage } from './src/utils/authError';
 
-type Screen = 'login' | 'verification' | 'password' | 'done';
+type Screen = 'login' | 'verification' | 'password' | 'done' | 'onboarding' | 'complete';
 type MessageType = 'error' | 'success' | 'info';
 
 export default function App() {
@@ -40,18 +43,26 @@ export default function App() {
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (session) {
-        setScreen('password');
+        const profileExists = await hasProfile();
+        setScreen(profileExists ? 'complete' : 'done');
       }
+
       setCheckingSession(false);
-    });
+    };
+
+    initSession();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        setScreen('password');
+        setScreen((current) => (current === 'login' || current === 'verification' ? 'password' : current));
         setMessage('');
       }
     });
@@ -214,10 +225,12 @@ export default function App() {
           messageType={messageType}
         />
       )}
-      {screen === 'done' && (
-        <View style={styles.doneContainer}>
-          <Text style={styles.doneTitle}>Conta criada!</Text>
-          <Text style={styles.doneSubtitle}>Bem-vindo ao InstaFit.</Text>
+      {screen === 'done' && <AccountCreatedScreen onContinue={() => setScreen('onboarding')} />}
+      {screen === 'onboarding' && <OnboardingChatScreen onComplete={() => setScreen('complete')} />}
+      {screen === 'complete' && (
+        <View style={styles.completeContainer}>
+          <Text style={styles.completeTitle}>Perfil configurado!</Text>
+          <Text style={styles.completeSubtitle}>Seu onboarding foi concluído.</Text>
         </View>
       )}
       <StatusBar style="light" />
@@ -232,20 +245,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  doneContainer: {
+  completeContainer: {
     flex: 1,
     backgroundColor: '#000',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
   },
-  doneTitle: {
+  completeTitle: {
     color: '#fff',
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 8,
   },
-  doneSubtitle: {
+  completeSubtitle: {
     color: '#888',
     fontSize: 16,
     textAlign: 'center',
