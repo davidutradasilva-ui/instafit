@@ -33,6 +33,13 @@ export async function sendEmailConfirmation(email: string) {
   });
 }
 
+export async function signInWithPassword(email: string, password: string) {
+  return supabase.auth.signInWithPassword({
+    email: email.trim().toLowerCase(),
+    password,
+  });
+}
+
 export async function setUserPassword(password: string) {
   return supabase.auth.updateUser({ password });
 }

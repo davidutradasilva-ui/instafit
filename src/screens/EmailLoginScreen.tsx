@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,10 +13,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AuthMessage from '../components/AuthMessage';
 
+type AuthMode = 'signup' | 'login';
+
 type EmailLoginScreenProps = {
   email: string;
+  password: string;
   onEmailChange: (email: string) => void;
+  onPasswordChange: (password: string) => void;
   onContinue: () => void;
+  onLogin: () => void;
   loading?: boolean;
   message?: string;
   messageType?: 'error' | 'success' | 'info';
@@ -23,12 +29,21 @@ type EmailLoginScreenProps = {
 
 export default function EmailLoginScreen({
   email,
+  password,
   onEmailChange,
+  onPasswordChange,
   onContinue,
+  onLogin,
   loading = false,
   message = '',
   messageType = 'error',
 }: EmailLoginScreenProps) {
+  const [mode, setMode] = useState<AuthMode>('signup');
+
+  const toggleMode = () => {
+    setMode((current) => (current === 'signup' ? 'login' : 'signup'));
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -40,7 +55,7 @@ export default function EmailLoginScreen({
         </TouchableOpacity>
 
         <View style={styles.emailSection}>
-          <Text style={styles.title}>Qual seu Email?</Text>
+          <Text style={styles.title}>{mode === 'signup' ? 'Qual seu Email?' : 'Entrar'}</Text>
           <TextInput
             style={styles.emailInput}
             value={email}
@@ -52,25 +67,50 @@ export default function EmailLoginScreen({
             autoCorrect={false}
             underlineColorAndroid="transparent"
           />
+
+          {mode === 'login' && (
+            <TextInput
+              style={styles.passwordInput}
+              value={password}
+              onChangeText={onPasswordChange}
+              placeholder="Sua senha"
+              placeholderTextColor="#555"
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              underlineColorAndroid="transparent"
+            />
+          )}
+
+          <TouchableOpacity onPress={toggleMode} accessibilityLabel="Alternar modo">
+            <Text style={styles.modeLink}>
+              {mode === 'signup' ? 'Já tem uma conta? Entrar' : 'Não tem conta? Cadastre-se'}
+            </Text>
+          </TouchableOpacity>
+
           <AuthMessage message={message} type={messageType} />
         </View>
 
-        <View style={styles.socialSection}>
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>Ou entre usando</Text>
-            <View style={styles.dividerLine} />
-          </View>
+        {mode === 'signup' && (
+          <View style={styles.socialSection}>
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>Ou entre usando</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
-          <View style={styles.socialButtonsRow}>
-            <TouchableOpacity style={styles.socialButton} accessibilityLabel="Entrar com Google">
-              <Ionicons name="logo-google" size={22} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton} accessibilityLabel="Entrar com Apple">
-              <Ionicons name="logo-apple" size={24} color="#fff" />
-            </TouchableOpacity>
+            <View style={styles.socialButtonsRow}>
+              <TouchableOpacity style={styles.socialButton} accessibilityLabel="Entrar com Google">
+                <Ionicons name="logo-google" size={22} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.socialButton} accessibilityLabel="Entrar com Apple">
+                <Ionicons name="logo-apple" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
+
+        {mode === 'login' && <View style={styles.spacer} />}
 
         <View style={styles.footer}>
           <TouchableOpacity style={styles.backButton} accessibilityLabel="Voltar">
@@ -78,14 +118,14 @@ export default function EmailLoginScreen({
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.continueButton, loading && styles.continueButtonDisabled]}
-            accessibilityLabel="Continuar"
-            onPress={onContinue}
+            accessibilityLabel={mode === 'signup' ? 'Continuar' : 'Entrar'}
+            onPress={mode === 'signup' ? onContinue : onLogin}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#000" />
             ) : (
-              <Text style={styles.continueText}>Continuar</Text>
+              <Text style={styles.continueText}>{mode === 'signup' ? 'Continuar' : 'Entrar'}</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -132,6 +172,29 @@ const styles = StyleSheet.create({
     outlineWidth: 0,
     width: '100%',
     maxWidth: 280,
+    marginBottom: 16,
+  },
+  passwordInput: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    outlineStyle: 'none',
+    outlineWidth: 0,
+    width: '100%',
+    maxWidth: 280,
+    marginBottom: 16,
+  },
+  modeLink: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  spacer: {
+    flex: 1,
   },
   socialSection: {
     flex: 1,

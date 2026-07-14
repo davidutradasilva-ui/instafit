@@ -8,7 +8,7 @@ import CreatePasswordScreen from './src/screens/CreatePasswordScreen';
 import AccountCreatedScreen from './src/screens/AccountCreatedScreen';
 import OnboardingChatScreen from './src/screens/OnboardingChatScreen';
 import MainAppScreen from './src/screens/MainAppScreen';
-import { sendEmailConfirmation, setUserPassword } from './src/services/auth';
+import { sendEmailConfirmation, setUserPassword, signInWithPassword } from './src/services/auth';
 import { hasProfile } from './src/services/profile';
 import { isSupabaseConfigured, supabase } from './src/lib/supabase';
 import { getAuthErrorMessage } from './src/utils/authError';
@@ -51,7 +51,7 @@ export default function App() {
 
       if (session) {
         const profileExists = await hasProfile();
-        setScreen(profileExists ? 'main' : 'done');
+        setScreen(profileExists ? 'main' : 'password');
       }
 
       setCheckingSession(false);
@@ -63,13 +63,56 @@ export default function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        setScreen((current) => (current === 'login' || current === 'verification' ? 'password' : current));
+        setScreen((current) => {
+          if (current === 'verification') {
+            return 'password';
+          }
+          return current;
+        });
         setMessage('');
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const handleSignIn = async () => {
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (!isSupabaseConfigured) {
+      showMessage('Configure as variáveis do Supabase na Vercel antes de continuar.');
+      return;
+    }
+
+    if (!trimmedEmail.includes('@')) {
+      showMessage('Digite um e-mail válido para continuar.');
+      return;
+    }
+
+    if (password.length < 6) {
+      showMessage('Digite sua senha para entrar.');
+      return;
+    }
+
+    setMessage('');
+    setLoading(true);
+
+    try {
+      const { error } = await signInWithPassword(trimmedEmail, password);
+      if (error) {
+        showMessage(`Erro ao entrar: ${getAuthErrorMessage(error, 'E-mail ou senha incorretos.')}`);
+        return;
+      }
+
+      const profileExists = await hasProfile();
+      setScreen(profileExists ? 'main' : 'onboarding');
+      setMessage('');
+    } catch {
+      showMessage('Não foi possível entrar. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSendConfirmation = async () => {
     const trimmedEmail = email.trim().toLowerCase();
@@ -191,8 +234,11 @@ export default function App() {
       {screen === 'login' && (
         <EmailLoginScreen
           email={email}
+          password={password}
           onEmailChange={setEmail}
+          onPasswordChange={setPassword}
           onContinue={handleSendConfirmation}
+          onLogin={handleSignIn}
           loading={loading}
           message={message}
           messageType={messageType}
