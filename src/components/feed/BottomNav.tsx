@@ -43,8 +43,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#222',
     backgroundColor: '#000',
     paddingTop: 8,
     paddingBottom: 10,
