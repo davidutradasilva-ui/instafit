@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export type BottomTab = 'home' | 'workout' | 'community' | 'diet' | 'profile';
@@ -29,8 +29,7 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             onPress={() => onTabChange(tab.id)}
             accessibilityLabel={tab.label}
           >
-            <Ionicons name={tab.icon} size={24} color={isActive ? '#fff' : '#666'} />
-            <Text style={[styles.label, isActive && styles.labelActive]}>{tab.label}</Text>
+            <Ionicons name={tab.icon} size={20} color={isActive ? '#fff' : '#666'} />
           </TouchableOpacity>
         );
       })}
@@ -44,20 +43,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     backgroundColor: '#000',
-    paddingTop: 8,
-    paddingBottom: 10,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
   tab: {
     alignItems: 'center',
-    gap: 4,
-    minWidth: 56,
-  },
-  label: {
-    color: '#666',
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  labelActive: {
-    color: '#fff',
+    justifyContent: 'center',
+    minWidth: 44,
+    paddingVertical: 4,
   },
 });

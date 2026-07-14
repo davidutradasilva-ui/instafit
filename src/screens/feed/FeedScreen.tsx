@@ -46,6 +46,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   feedContent: {
-    paddingBottom: 100,
+    paddingBottom: 76,
   },
 });
