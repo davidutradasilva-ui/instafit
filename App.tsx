@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import EmailLoginScreen from './src/screens/EmailLoginScreen';
@@ -7,12 +7,13 @@ import EmailVerificationScreen from './src/screens/EmailVerificationScreen';
 import CreatePasswordScreen from './src/screens/CreatePasswordScreen';
 import AccountCreatedScreen from './src/screens/AccountCreatedScreen';
 import OnboardingChatScreen from './src/screens/OnboardingChatScreen';
+import MainAppScreen from './src/screens/MainAppScreen';
 import { sendEmailConfirmation, setUserPassword } from './src/services/auth';
 import { hasProfile } from './src/services/profile';
 import { isSupabaseConfigured, supabase } from './src/lib/supabase';
 import { getAuthErrorMessage } from './src/utils/authError';
 
-type Screen = 'login' | 'verification' | 'password' | 'done' | 'onboarding' | 'complete';
+type Screen = 'login' | 'verification' | 'password' | 'done' | 'onboarding' | 'main' | 'complete';
 type MessageType = 'error' | 'success' | 'info';
 
 export default function App() {
@@ -50,7 +51,7 @@ export default function App() {
 
       if (session) {
         const profileExists = await hasProfile();
-        setScreen(profileExists ? 'complete' : 'done');
+        setScreen(profileExists ? 'main' : 'done');
       }
 
       setCheckingSession(false);
@@ -226,13 +227,9 @@ export default function App() {
         />
       )}
       {screen === 'done' && <AccountCreatedScreen onContinue={() => setScreen('onboarding')} />}
-      {screen === 'onboarding' && <OnboardingChatScreen onComplete={() => setScreen('complete')} />}
-      {screen === 'complete' && (
-        <View style={styles.completeContainer}>
-          <Text style={styles.completeTitle}>Perfil configurado!</Text>
-          <Text style={styles.completeSubtitle}>Seu onboarding foi concluído.</Text>
-        </View>
-      )}
+      {screen === 'onboarding' && <OnboardingChatScreen onComplete={() => setScreen('main')} />}
+      {screen === 'main' && <MainAppScreen />}
+      {screen === 'complete' && <MainAppScreen />}
       <StatusBar style="light" />
     </SafeAreaProvider>
   );
@@ -244,23 +241,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  completeContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-  },
-  completeTitle: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  completeSubtitle: {
-    color: '#888',
-    fontSize: 16,
-    textAlign: 'center',
   },
 });
