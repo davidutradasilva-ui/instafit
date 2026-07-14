@@ -1,4 +1,5 @@
--- Execute este SQL no Supabase: SQL Editor → New query → Run
+-- OBRIGATÓRIO: execute este SQL no Supabase (SQL Editor → New query → Run)
+-- Sem isso, o onboarding não salva e o login não reconhece perfis existentes.
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,

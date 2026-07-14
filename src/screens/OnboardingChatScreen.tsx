@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { isUsernameAvailable, normalizeUsername, saveProfile } from '../services/profile';
+import { getProfileErrorMessage } from '../utils/profileError';
 
 type ChatMessage = {
   id: string;
@@ -162,10 +163,15 @@ export default function OnboardingChatScreen({ onComplete }: OnboardingChatScree
       }
 
       setLoading(true);
-      const available = await isUsernameAvailable(normalized);
+      const usernameCheck = await isUsernameAvailable(normalized);
       setLoading(false);
 
-      if (!available) {
+      if (usernameCheck.error) {
+        setError(getProfileErrorMessage({ message: usernameCheck.error }, 'Não foi possível validar o username.'));
+        return;
+      }
+
+      if (!usernameCheck.available) {
         setError('Esse username já está em uso. Escolha outro.');
         return;
       }
@@ -216,7 +222,7 @@ export default function OnboardingChatScreen({ onComplete }: OnboardingChatScree
       setLoading(false);
 
       if (saveError) {
-        setError(saveError.message || 'Não foi possível salvar seu perfil.');
+        setError(getProfileErrorMessage(saveError, 'Não foi possível salvar seu perfil.'));
         return;
       }
 

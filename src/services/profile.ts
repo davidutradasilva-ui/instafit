@@ -8,6 +8,19 @@ export type ProfileData = {
   referralCode: string | null;
 };
 
+type UsernameAvailability = {
+  available: boolean;
+  error?: string;
+};
+
+function hasMetadataProfile(user: { user_metadata?: Record<string, unknown> }) {
+  const metadata = user.user_metadata ?? {};
+  const fullName = typeof metadata.full_name === 'string' ? metadata.full_name.trim() : '';
+  const username = typeof metadata.username === 'string' ? metadata.username.trim() : '';
+
+  return metadata.profile_complete === true && Boolean(fullName && username);
+}
+
 export function normalizeUsername(value: string) {
   return value
     .trim()
@@ -16,11 +29,25 @@ export function normalizeUsername(value: string) {
     .replace(/[^a-z0-9_]/g, '');
 }
 
-export async function isUsernameAvailable(username: string) {
+export async function isUsernameAvailable(username: string): Promise<UsernameAvailability> {
   const normalized = normalizeUsername(username);
 
   if (normalized.length < 3) {
-    return false;
+    return { available: false };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: ownProfile, error: ownProfileError } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', user?.id ?? '')
+    .maybeSingle();
+
+  if (!ownProfileError && ownProfile?.username === normalized) {
+    return { available: true };
   }
 
   const { data, error } = await supabase.rpc('is_username_available', {
@@ -28,16 +55,13 @@ export async function isUsernameAvailable(username: string) {
   });
 
   if (error) {
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', normalized)
-      .maybeSingle();
-
-    return !existing;
+    return {
+      available: false,
+      error: error.message,
+    };
   }
 
-  return Boolean(data);
+  return { available: Boolean(data) };
 }
 
 export async function saveProfile(profile: ProfileData) {
@@ -51,15 +75,38 @@ export async function saveProfile(profile: ProfileData) {
 
   const [day, month, year] = profile.birthDate.split('/');
   const isoDate = `${year}-${month}-${day}`;
+  const normalizedUsername = normalizeUsername(profile.username);
+  const fullName = profile.fullName.trim();
 
-  return supabase.from('profiles').insert({
-    id: user.id,
-    full_name: profile.fullName.trim(),
-    username: normalizeUsername(profile.username),
-    birth_date: isoDate,
-    gender: profile.gender.trim(),
-    referral_code: profile.referralCode,
+  const { error: profileError } = await supabase.from('profiles').upsert(
+    {
+      id: user.id,
+      full_name: fullName,
+      username: normalizedUsername,
+      birth_date: isoDate,
+      gender: profile.gender.trim(),
+      referral_code: profile.referralCode,
+    },
+    { onConflict: 'id' }
+  );
+
+  if (profileError) {
+    return { error: profileError };
+  }
+
+  const { error: metadataError } = await supabase.auth.updateUser({
+    data: {
+      profile_complete: true,
+      full_name: fullName,
+      username: normalizedUsername,
+    },
   });
+
+  if (metadataError) {
+    return { error: metadataError };
+  }
+
+  return { error: null };
 }
 
 export async function hasProfile() {
@@ -71,11 +118,15 @@ export async function hasProfile() {
     return false;
   }
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .select('id, full_name, username')
     .eq('id', user.id)
     .maybeSingle();
 
-  return Boolean(data?.full_name?.trim() && data?.username?.trim());
+  if (!error && data?.full_name?.trim() && data?.username?.trim()) {
+    return true;
+  }
+
+  return hasMetadataProfile(user);
 }
