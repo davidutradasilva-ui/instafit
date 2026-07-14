@@ -71,6 +71,11 @@ export async function hasProfile() {
     return false;
   }
 
-  const { data } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
-  return Boolean(data);
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, full_name, username')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  return Boolean(data?.full_name?.trim() && data?.username?.trim());
 }

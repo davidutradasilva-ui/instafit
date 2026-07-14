@@ -8,8 +8,13 @@ import CreatePasswordScreen from './src/screens/CreatePasswordScreen';
 import AccountCreatedScreen from './src/screens/AccountCreatedScreen';
 import OnboardingChatScreen from './src/screens/OnboardingChatScreen';
 import MainAppScreen from './src/screens/MainAppScreen';
-import { sendEmailConfirmation, setUserPassword, signInWithPassword } from './src/services/auth';
-import { hasProfile } from './src/services/profile';
+import {
+  getAuthDestination,
+  markPasswordSet,
+  sendEmailConfirmation,
+  setUserPassword,
+  signInWithPassword,
+} from './src/services/auth';
 import { isSupabaseConfigured, supabase } from './src/lib/supabase';
 import { getAuthErrorMessage } from './src/utils/authError';
 
@@ -50,8 +55,8 @@ export default function App() {
       } = await supabase.auth.getSession();
 
       if (session) {
-        const profileExists = await hasProfile();
-        setScreen(profileExists ? 'main' : 'password');
+        const destination = await getAuthDestination();
+        setScreen(destination);
       }
 
       setCheckingSession(false);
@@ -104,8 +109,9 @@ export default function App() {
         return;
       }
 
-      const profileExists = await hasProfile();
-      setScreen(profileExists ? 'main' : 'onboarding');
+      await markPasswordSet();
+      const destination = await getAuthDestination({ passwordIsSet: true });
+      setScreen(destination);
       setMessage('');
     } catch {
       showMessage('Não foi possível entrar. Tente novamente.');

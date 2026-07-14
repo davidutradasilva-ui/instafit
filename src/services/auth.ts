@@ -1,5 +1,8 @@
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { hasProfile } from './profile';
+
+export type AuthDestination = 'main' | 'onboarding' | 'password';
 
 function ensureHttpsUrl(url: string) {
   const trimmed = url.trim();
@@ -41,5 +44,40 @@ export async function signInWithPassword(email: string, password: string) {
 }
 
 export async function setUserPassword(password: string) {
-  return supabase.auth.updateUser({ password });
+  return supabase.auth.updateUser({
+    password,
+    data: { password_set: true },
+  });
+}
+
+export async function markPasswordSet() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.user_metadata?.password_set === true) {
+    return;
+  }
+
+  await supabase.auth.updateUser({ data: { password_set: true } });
+}
+
+export async function getAuthDestination(options?: { passwordIsSet?: boolean }): Promise<AuthDestination> {
+  if (await hasProfile()) {
+    return 'main';
+  }
+
+  if (options?.passwordIsSet) {
+    return 'onboarding';
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user?.user_metadata?.password_set === true) {
+    return 'onboarding';
+  }
+
+  return 'password';
 }
